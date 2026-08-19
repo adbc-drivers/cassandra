@@ -1,0 +1,92 @@
+// Copyright (c) 2026 ADBC Drivers Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//         http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// part: metadata
+
+[setup]
+drop = "test_set_int"
+
+[tags]
+sql-type-name = "SET"
+
+// part: setup_query
+
+CREATE TABLE test_set_int (
+    pk INT,
+    idx INT,
+    res SET<INT>,
+    PRIMARY KEY (pk, idx)
+);
+
+INSERT INTO test_set_int (pk, idx, res) VALUES (0, 1, {3, 1, 2});
+INSERT INTO test_set_int (pk, idx, res) VALUES (0, 2, {42});
+INSERT INTO test_set_int (pk, idx, res) VALUES (0, 3, NULL);
+
+// part: query
+
+SELECT res FROM test_set_int WHERE pk = 0
+
+// part: catalog_schema
+
+// GetTableSchema returns the whole table. The harness drops the first column
+// (the pk partition key), leaving the clustering key idx and the res column.
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "idx",
+            "format": "i",
+            "flags": ["nullable"]
+        },
+        {
+            "name": "res",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "i",
+                    "flags": ["nullable"]
+                }
+            ]
+        }
+    ]
+}
+
+// part: expected_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "res",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "i",
+                    "flags": ["nullable"]
+                }
+            ]
+        }
+    ]
+}
+
+// part: expected
+
+{"res": [1, 2, 3]}
+{"res": [42]}
+{"res": null}

@@ -1,0 +1,95 @@
+// Copyright (c) 2026 ADBC Drivers Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//         http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// part: metadata
+
+[setup]
+drop = "test_list_text"
+
+[tags]
+sql-type-name = "LIST"
+
+// A collection column (LIST) cannot be used as a sort key, so results are ordered by a clustering key instead. All rows
+// share one partition and are returned in ascending clustering order.
+
+// part: setup_query
+
+CREATE TABLE test_list_text (
+    pk INT,
+    idx INT,
+    res LIST<TEXT>,
+    PRIMARY KEY (pk, idx)
+);
+
+INSERT INTO test_list_text (pk, idx, res) VALUES (0, 1, ['a', 'b', 'c']);
+INSERT INTO test_list_text (pk, idx, res) VALUES (0, 2, ['single']);
+INSERT INTO test_list_text (pk, idx, res) VALUES (0, 3, NULL);
+
+// part: query
+
+SELECT res FROM test_list_text WHERE pk = 0
+
+// part: catalog_schema
+
+// GetTableSchema returns the whole table. The harness drops the first column
+// (the pk partition key), leaving the clustering key idx and the res column.
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "idx",
+            "format": "i",
+            "flags": ["nullable"]
+        },
+        {
+            "name": "res",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "u",
+                    "flags": ["nullable"]
+                }
+            ]
+        }
+    ]
+}
+
+// part: expected_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "res",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "u",
+                    "flags": ["nullable"]
+                }
+            ]
+        }
+    ]
+}
+
+// part: expected
+
+{"res": ["a", "b", "c"]}
+{"res": ["single"]}
+{"res": null}
