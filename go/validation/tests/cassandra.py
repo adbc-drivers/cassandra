@@ -1,4 +1,4 @@
-# Copyright (c) 2025 ADBC Drivers Contributors
+# Copyright (c) 2025-2026 ADBC Drivers Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import os
 import re
 from pathlib import Path
@@ -53,6 +54,7 @@ class CassandraQuirks(model.DriverQuirks):
     setup = model.DriverSetup(
         database={
             "cassandra.hosts": model.FromEnv("CASSANDRA_HOSTS"),
+            "cassandra.port": model.FromEnv("CASSANDRA_PORT"),
             "cassandra.keyspace": model.FromEnv("CASSANDRA_KEYSPACE"),
         },
         connection={},
@@ -61,7 +63,7 @@ class CassandraQuirks(model.DriverQuirks):
 
     @property
     def queries_paths(self) -> tuple[Path]:
-        return (Path(__file__).parent.parent / "queries",)
+        return (Path(__file__).parent.parent / "queries/cassandra",)
 
     def query_override(self, context: str, default: str) -> str:
         """Override ad-hoc framework queries when Cassandra needs different CQL."""
@@ -111,11 +113,36 @@ class CassandraQuirks(model.DriverQuirks):
         return split_statement(statement, dialect=None)
 
 
-def get_quirks(vendor_version: str, *, vendor: str = "cassandra") -> CassandraQuirks:
-    """Get quirks for a specific Cassandra version."""
-    if vendor != "cassandra":
-        raise ValueError(f"unsupported vendor: {vendor}")
-    return CassandraQuirks()
+class DSEQuirks(CassandraQuirks):
+    name = "dse"
+    # DSE 6.9.25 reports its Cassandra-compatible release version through
+    # system.local rather than returning the DSE image tag.
+    vendor_version = "4.0.0.6925"
+    short_version = "6.9"
+    features = CassandraQuirks.features.with_values(
+        current_schema=model.FromEnv("DSE_KEYSPACE"),
+        secondary_schema=model.FromEnv("DSE_SECONDARY_KEYSPACE"),
+    )
+    setup = model.DriverSetup(
+        database={
+            "cassandra.hosts": model.FromEnv("DSE_HOSTS"),
+            "cassandra.port": model.FromEnv("DSE_PORT"),
+            "cassandra.keyspace": model.FromEnv("DSE_KEYSPACE"),
+        },
+        connection={},
+        statement={},
+    )
+
+    @property
+    def queries_paths(self) -> tuple[Path]:
+        return super().queries_paths + (Path(__file__).parent.parent / "queries/dse",)
 
 
-QUIRKS = [CassandraQuirks()]
+@functools.cache
+def get_quirks(test_config: str) -> CassandraQuirks:
+    """Get quirks for a validation target."""
+    if test_config == "cassandra":
+        return CassandraQuirks()
+    if test_config == "dse":
+        return DSEQuirks()
+    raise ValueError(f"unsupported test config: {test_config}")

@@ -1,5 +1,5 @@
 <!--
-  Copyright (c) 2025 ADBC Drivers Contributors
+  Copyright (c) 2025-2026 ADBC Drivers Contributors
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -18,12 +18,17 @@
 
 Run these commands from the `go` directory.
 
-1. Start Cassandra and initialize the test keyspaces:
+1. Start Cassandra and DataStax Enterprise, then initialize their test
+   keyspaces:
 
    ```shell
-   docker compose up --detach --wait
+   docker compose up --detach --wait test-service dse
    docker compose exec -T test-service cqlsh -f /docker-entrypoint-initdb.d/init.cql
+   docker compose exec -T dse cqlsh -f /docker-entrypoint-initdb.d/init.cql
    ```
+
+   Starting the DSE service accepts the DataStax license through the
+   `DS_LICENSE=accept` setting in `compose.yaml`.
 
 2. Load the local test configuration:
 
@@ -35,7 +40,8 @@ Run these commands from the `go` directory.
 
    ```shell
    pixi run make
-   pixi run validate
+   pixi run validate --vendor-version cassandra
+   pixi run validate --vendor-version dse
    ```
 
 Run an individual validation module with:
@@ -44,4 +50,5 @@ Run an individual validation module with:
 pixi run pytest -v validation/tests/test_ingest.py
 ```
 
-Stop Cassandra with `docker compose down`. Add `--volumes` to remove its data.
+Stop the services with `docker compose down`. Add `--volumes` to remove their
+data.

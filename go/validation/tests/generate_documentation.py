@@ -13,11 +13,25 @@
 # limitations under the License.
 
 import argparse
+import functools
 from pathlib import Path
 
 import adbc_drivers_validation.generate_documentation as generate_documentation
+import adbc_drivers_validation.model as model
 
 from . import cassandra
+
+
+@functools.cache
+def get_quirks(version: str, *, vendor: str) -> model.DriverQuirks:
+    if vendor == "cassandra" and version == "5.0":
+        return cassandra.CassandraQuirks()
+    if vendor == "dse" and version == "6.9":
+        return cassandra.DSEQuirks()
+    if vendor not in ("cassandra", "dse"):
+        raise ValueError(f"unsupported vendor: {vendor}")
+    raise ValueError(f"unsupported {vendor} version: {version}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -29,8 +43,11 @@ if __name__ == "__main__":
 
     generate_documentation.generate(
         "cassandra",
-        cassandra.get_quirks,
-        [("cassandra", "Apache Cassandra")],
+        get_quirks,
+        [
+            ("cassandra", "Apache Cassandra"),
+            ("dse", "DataStax Enterprise"),
+        ],
         reports,
         template.resolve(),
         args.output.resolve(),
