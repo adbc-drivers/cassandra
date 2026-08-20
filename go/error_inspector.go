@@ -30,8 +30,7 @@ func (CassandraErrorInspector) InspectError(err error, defaultStatus adbc.Status
 	vendorCode := int32(0)
 	sqlState := [5]byte{}
 
-	var requestErr gocql.RequestError
-	if errors.As(err, &requestErr) {
+	if requestErr, ok := errors.AsType[gocql.RequestError](err); ok {
 		vendorCode = int32(requestErr.Code())
 		message := strings.ToLower(requestErr.Message())
 		switch {

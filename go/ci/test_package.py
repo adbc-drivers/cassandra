@@ -19,9 +19,11 @@ import pytest
 def test_package() -> None:
     uri = "cassandra://127.0.0.1:1/adbc_test?connect_timeout=100&timeout=100"
 
-    with pytest.raises(
-        adbc_driver_manager.dbapi.OperationalError,
-        match="failed to create session",
+    with (
+        pytest.raises(
+            adbc_driver_manager.dbapi.OperationalError,
+            match="failed to create session",
+        ),
+        adbc_driver_manager.dbapi.connect(driver="cassandra", uri=uri),
     ):
-        with adbc_driver_manager.dbapi.connect(driver="cassandra", uri=uri):
-            pass
+        pass

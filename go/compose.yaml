@@ -37,8 +37,34 @@ services:
     networks:
       - cassandra-network
 
+  dse:
+    image: datastax/dse-server:6.9.25
+    platform: linux/amd64
+    container_name: dse-test
+    hostname: dse
+    ports:
+      - "9043:9042"  # CQL native transport
+    environment:
+      - DS_LICENSE=accept
+      - CLUSTER_NAME=adbc-test-cluster
+      - DC=datacenter1
+      - JVM_EXTRA_OPTS=-Xms1g -Xmx1g
+    volumes:
+      - dse-data:/var/lib/cassandra
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        ["CMD-SHELL", "cqlsh 127.0.0.1 9042 -e 'SELECT release_version FROM system.local'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    networks:
+      - cassandra-network
+
 volumes:
   cassandra-data:
+  dse-data:
 
 networks:
   cassandra-network:

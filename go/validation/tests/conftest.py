@@ -1,4 +1,4 @@
-# Copyright (c) 2025 ADBC Drivers Contributors
+# Copyright (c) 2025-2026 ADBC Drivers Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,13 +32,11 @@ from . import cassandra
 
 def pytest_addoption(parser):
     adbc_drivers_validation.tests.conftest.pytest_addoption(parser)
-    parser.addoption("--vendor-version", action="store", default="latest")
+    parser.addoption("--vendor-version", action="store", default="cassandra")
 
 
 @pytest.fixture(scope="session")
 def driver(request, pytestconfig) -> adbc_drivers_validation.model.DriverQuirks:
-    driver = request.param
-    assert driver.startswith("cassandra:")
     return cassandra.get_quirks(pytestconfig.getoption("vendor_version"))
 
 
@@ -50,6 +48,5 @@ def driver_path(driver: adbc_drivers_validation.model.DriverQuirks) -> str:
     }.get(sys.platform, "so")
     # Assume shared library is in the repo root
     return str(
-        Path(__file__).parent.parent.parent
-        / f"build/libadbc_driver_{driver.name}.{ext}"
+        Path(__file__).parent.parent.parent / f"build/libadbc_driver_cassandra.{ext}"
     )
