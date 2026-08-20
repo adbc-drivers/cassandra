@@ -406,7 +406,7 @@ func TestValidation(t *testing.T) {
 		suite.Run(t, &validation.DatabaseTests{Quirks: q})
 		suite.Run(t, &validation.ConnectionTests{Quirks: q})
 		suite.Run(t, &CassandraStatementTests{
-			StatementTests: validation.StatementTests{Quirks: q},
+			Quirks: q,
 		})
 	})
 }

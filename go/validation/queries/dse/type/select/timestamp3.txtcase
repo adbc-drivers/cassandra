@@ -14,8 +14,8 @@
 
 // part: setup_query
 
-// DSE's hybrid calendar parses year 0001 as year 0000, which the validation
-// timestamp comparator cannot represent. Exercise the Unix epoch instead.
+// DSE's hybrid calendar parses 0002-01-01 as 0001-12-30. Year 0002 keeps the
+// result representable by the validation timestamp comparator.
 CREATE TABLE test_timestamp (
     idx INT PRIMARY KEY,
     res TIMESTAMP
@@ -24,7 +24,7 @@ CREATE TABLE test_timestamp (
 INSERT INTO test_timestamp (idx, res) VALUES (1, '2023-05-15 13:45:30.123+0000');
 INSERT INTO test_timestamp (idx, res) VALUES (2, '2000-01-01 00:00:00.234+0000');
 INSERT INTO test_timestamp (idx, res) VALUES (3, '1969-07-20 20:17:40.345+0000');
-INSERT INTO test_timestamp (idx, res) VALUES (4, '1970-01-01 00:00:00.000+0000');
+INSERT INTO test_timestamp (idx, res) VALUES (4, '0002-01-01 00:00:00.000+0000');
 INSERT INTO test_timestamp (idx, res) VALUES (5, '9999-12-31 23:59:59.999+0000');
 INSERT INTO test_timestamp (idx, res) VALUES (6, NULL);
 
@@ -33,6 +33,6 @@ INSERT INTO test_timestamp (idx, res) VALUES (6, NULL);
 {"res": 1684158330123}
 {"res": 946684800234}
 {"res": -14182939655}
-{"res": 0}
+{"res": -62104233600000}
 {"res": 253402300799999}
 {"res": null}

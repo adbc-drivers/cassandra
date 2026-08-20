@@ -14,7 +14,7 @@
 
 module github.com/adbc-drivers/cassandra/go
 
-go 1.26.6
+go 1.27.0
 
 require (
 	github.com/adbc-drivers/driverbase-go/driverbase v0.0.0-20260817015335-4ff17728aee2
@@ -52,7 +52,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.45.0 // indirect
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20260813180055-c1d0aacb2297 // indirect
+	golang.org/x/exp v0.0.0-20260820142414-ca536658362e // indirect
 	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
