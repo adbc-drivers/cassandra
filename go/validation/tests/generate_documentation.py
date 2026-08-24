@@ -26,7 +26,11 @@ def get_quirks(version: str, *, vendor: str) -> model.DriverQuirks:
     if vendor == "cassandra" and version == "5.0":
         return cassandra.CassandraQuirks()
     if vendor == "dse" and version == "6.9":
-        return cassandra.DSEQuirks()
+        quirks = cassandra.DSEQuirks()
+        # DSE reports its Cassandra-compatible release version through
+        # GetInfo, but the compatibility section should identify the backend.
+        quirks.vendor_name = "DataStax Enterprise"
+        return quirks
     if vendor not in ("cassandra", "dse"):
         raise ValueError(f"unsupported vendor: {vendor}")
     raise ValueError(f"unsupported {vendor} version: {version}")

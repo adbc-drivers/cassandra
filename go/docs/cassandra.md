@@ -20,132 +20,66 @@
 
 {{ heading|safe }}
 
-This is an implementation of an [ADBC](https://arrow.apache.org/adbc/) driver for [Apache Cassandra](https://cassandra.apache.org/).
+This driver provides access to [Apache Cassandra][cassandra], a distributed,
+open-source NoSQL database.
 
 ## Installation
 
+The Cassandra driver can be installed with
+[dbc](https://docs.columnar.tech/dbc):
+
 ```bash
-go get github.com/adbc-drivers/cassandra/go
+dbc install --pre cassandra
 ```
 
-## Usage
+## Connecting
 
-```go
-import (
-    "context"
+To connect, provide a Cassandra connection string as the `uri` option:
 
-    "github.com/adbc-drivers/cassandra/go"
-    "github.com/apache/arrow-go/v18/arrow/memory"
+```python
+from adbc_driver_manager import dbapi
+
+conn = dbapi.connect(
+    driver="cassandra",
+    db_kwargs={
+        "uri": "cassandra://localhost:9042/my_keyspace",
+    },
 )
-
-func main() {
-    ctx := context.Background()
-
-    // Create driver
-    drv := cassandra.NewDriver(memory.DefaultAllocator)
-
-    // Open database
-    db, err := drv.NewDatabaseWithContext(ctx, map[string]string{
-        "cassandra.hosts": "127.0.0.1",
-        "cassandra.keyspace": "my_keyspace",
-        "username": "cassandra",
-        "password": "cassandra",
-    })
-    if err != nil {
-        panic(err)
-    }
-    defer db.Close(ctx)
-
-    // Open connection
-    conn, err := db.Open(ctx)
-    if err != nil {
-        panic(err)
-    }
-    defer conn.Close(ctx)
-
-    // Create statement
-    stmt, err := conn.NewStatement(ctx)
-    if err != nil {
-        panic(err)
-    }
-    defer stmt.Close(ctx)
-
-    // Execute query
-    err = stmt.SetSqlQuery(ctx, "SELECT * FROM my_table")
-    if err != nil {
-        panic(err)
-    }
-
-    reader, _, err := stmt.ExecuteQuery(ctx)
-    if err != nil {
-        panic(err)
-    }
-    defer reader.Release()
-
-    // Process results
-    for reader.Next() {
-        record := reader.RecordBatch()
-        // Process record...
-    }
-}
 ```
 
-## Configuration Options
+The example uses Python and the
+[adbc-driver-manager](https://pypi.org/project/adbc-driver-manager) package,
+but the same options apply through other ADBC driver managers. See
+[adbc-quickstarts](https://github.com/columnar-tech/adbc-quickstarts) for
+end-to-end examples.
 
-### Connection Options
+### Connection String Format
 
-- `cassandra.hosts` - Comma-separated list of Cassandra hosts (default: "127.0.0.1")
-- `cassandra.keyspace` - Keyspace to connect to
-- `cassandra.port` - Port number (default: "9042")
-
-### Authentication
-
-- `username` / `cassandra.auth.username` - Username for authentication
-- `password` / `cassandra.auth.password` - Password for authentication
-
-### Connection Pool
-
-- `cassandra.num_conns` - Number of connections per host (default: 2)
-- `cassandra.page_size` - Page size for query results (default: 5000)
-- `cassandra.consistency` - Consistency level (default: "LOCAL_QUORUM")
-
-### Timeouts
-
-- `cassandra.connect_timeout` - Connect timeout in milliseconds (default: 10000)
-- `cassandra.timeout` - Query timeout in milliseconds (default: 10000)
-
-### TLS/SSL
-
-- `cassandra.enable_tls` - Enable TLS (default: disabled)
-- `cassandra.tls.cert_path` - Path to client certificate
-- `cassandra.tls.key_path` - Path to client key
-- `cassandra.tls.ca_path` - Path to CA certificate
-- `cassandra.tls.skip_verify` - Skip certificate verification
-- `cassandra.tls.hostname_override` - Override hostname for certificate verification
-
-### Protocol
-
-- `cassandra.protocol_version` - CQL protocol version (default: 4)
-
-## URI Format
-
-You can also use a URI to configure the connection:
-
-```
-cassandra://[username:password@]host[:port][/keyspace][?options]
+```text
+cassandra://[username[:password]@][host[:port]][/keyspace][?parameter1=value1&parameter2=value2...]
 ```
 
-Example:
-```
-cassandra://user:pass@localhost:9042/my_keyspace?page_size=1000&consistency=ONE&timeout=5000
-```
+Components:
 
-Supported query parameters are `num_conns`, `page_size`, `consistency`,
-`connect_timeout`, `timeout`, `enable_tls`, `tls_cert_path`, `tls_key_path`,
-`tls_ca_path`, `tls_skip_verify`, `tls_hostname_override`, and
-`protocol_version`. Boolean values must be `true` or `false`, and values such as
-file paths must be URL-encoded. Unknown or repeated parameters are rejected.
-Explicit ADBC options override values from the URI.
+- `scheme`: `cassandra://` (required)
+- `username`: Username for authentication (optional)
+- `password`: Password for authentication (optional; requires a username)
+- `host`: Cassandra contact point (optional; defaults to `127.0.0.1`)
+- `port`: Native transport port (optional; defaults to `9042`)
+- `keyspace`: Initial keyspace (optional)
+- Query parameters: Connection options listed below
+
+Examples:
+
+- `cassandra://localhost:9042/my_keyspace`
+- `cassandra://user:password@cassandra.example.com/my_keyspace`
+- `cassandra://localhost/my_keyspace?page_size=1000&consistency=ONE&timeout=5000`
+- `cassandra:///my_keyspace?enable_tls=true&tls_ca_path=%2Fpath%2Fto%2Fca.pem`
+
+The URI accepts one contact point. To supply multiple contact points, use the
+`cassandra.hosts` option instead. Query parameter values must be URL-encoded
+when necessary. Unknown or repeated query parameters are rejected. Options
+specified separately from the URI take precedence over URI values.
 
 ## Feature & Type Support
 
@@ -155,8 +89,107 @@ Explicit ADBC options override values from the URI.
 
 {{ types|safe }}
 
+## Options
+
+### Connection Options
+
+`uri`
+: **Type:** string. **Default:** not set.
+
+  Cassandra connection string in the format described above. If it is not
+  set, the driver uses the defaults of `127.0.0.1` and port `9042`.
+
+`username` and `password`
+: **Type:** string. **Default:** not set.
+
+  Standard ADBC options for username/password authentication. The aliases
+  `cassandra.auth.username` and `cassandra.auth.password` are also supported.
+
+`cassandra.hosts`
+: **Type:** string. **Default:** `127.0.0.1`.
+
+  Comma-separated list of Cassandra contact points. All contact points use the
+  port set by `cassandra.port`.
+
+`cassandra.port`
+: **Type:** integer. **Default:** `9042`.
+
+  Native transport port used for all contact points.
+
+`cassandra.keyspace`
+: **Type:** string. **Default:** not set.
+
+  Initial keyspace for the connection.
+
+`cassandra.num_conns` (URI query parameter: `num_conns`)
+: **Type:** integer. **Default:** `2`.
+
+  Number of connections to create per host.
+
+`cassandra.page_size` (URI query parameter: `page_size`)
+: **Type:** integer. **Default:** `5000`.
+
+  Maximum number of rows requested in each page of query results.
+
+`cassandra.consistency` (URI query parameter: `consistency`)
+: **Values:** `ANY`, `ONE`, `TWO`, `THREE`, `QUORUM`, `ALL`, `LOCAL_QUORUM`,
+  `EACH_QUORUM`, or `LOCAL_ONE`. **Default:** `LOCAL_QUORUM`.
+
+  Cassandra consistency level to use for queries. Values are
+  case-insensitive.
+
+`cassandra.connect_timeout` (URI query parameter: `connect_timeout`)
+: **Type:** integer. **Default:** `10000`.
+
+  Connection timeout in milliseconds.
+
+`cassandra.timeout` (URI query parameter: `timeout`)
+: **Type:** integer. **Default:** `10000`.
+
+  Query timeout in milliseconds.
+
+`cassandra.protocol_version` (URI query parameter: `protocol_version`)
+: **Type:** integer. **Default:** `4`.
+
+  CQL native protocol version.
+
+### TLS Options
+
+Boolean URI query parameters must be `true` or `false`.
+
+`cassandra.enable_tls` (URI query parameter: `enable_tls`)
+: **Type:** boolean. **Default:** `false`.
+
+  Enable TLS for the connection.
+
+`cassandra.tls.ca_path` (URI query parameter: `tls_ca_path`)
+: **Type:** string. **Default:** not set.
+
+  Path to a PEM-encoded CA certificate used to verify the server certificate.
+
+`cassandra.tls.cert_path` and `cassandra.tls.key_path` (URI query parameters:
+`tls_cert_path` and `tls_key_path`)
+: **Type:** string. **Default:** not set.
+
+  Paths to a PEM-encoded client certificate and private key. Set both options
+  to configure mutual TLS.
+
+`cassandra.tls.hostname_override` (URI query parameter:
+`tls_hostname_override`)
+: **Type:** string. **Default:** not set.
+
+  Server name used for certificate verification.
+
+`cassandra.tls.skip_verify` (URI query parameter: `tls_skip_verify`)
+: **Type:** boolean. **Default:** `false`.
+
+  Disable server certificate verification. This is not recommended for
+  production use.
+
 ## Compatibility
 
 {{ compatibility_info|safe }}
 
 {{ footnotes|safe }}
+
+[cassandra]: https://cassandra.apache.org/
