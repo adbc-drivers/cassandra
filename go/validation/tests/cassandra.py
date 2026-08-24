@@ -53,9 +53,7 @@ class CassandraQuirks(model.DriverQuirks):
     )
     setup = model.DriverSetup(
         database={
-            "cassandra.hosts": model.FromEnv("CASSANDRA_HOSTS"),
-            "cassandra.port": model.FromEnv("CASSANDRA_PORT"),
-            "cassandra.keyspace": model.FromEnv("CASSANDRA_KEYSPACE"),
+            "uri": model.FromEnv("CASSANDRA_URI"),
         },
         connection={},
         statement={},
@@ -125,9 +123,7 @@ class DSEQuirks(CassandraQuirks):
     )
     setup = model.DriverSetup(
         database={
-            "cassandra.hosts": model.FromEnv("DSE_HOSTS"),
-            "cassandra.port": model.FromEnv("DSE_PORT"),
-            "cassandra.keyspace": model.FromEnv("DSE_KEYSPACE"),
+            "uri": model.FromEnv("DSE_URI"),
         },
         connection={},
         statement={},

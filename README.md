@@ -16,27 +16,43 @@
 
 # ADBC Driver for Cassandra
 
-An [ADBC](https://arrow.apache.org/adbc/) driver for
-[Apache Cassandra](https://cassandra.apache.org/), implemented in Go.
+An [ADBC driver](https://arrow.apache.org/adbc/) for
+[Apache Cassandra](https://cassandra.apache.org/), built on the
+[Apache Cassandra GoCQL Driver](https://github.com/apache/cassandra-gocql-driver).
 
 ## Installation
 
+Pre-packaged builds are available for various platforms from the
+[Columnar](https://columnar.tech) CDN. They can be installed by any tool that
+supports [ADBC](https://arrow.apache.org/adbc/) Driver Manifests, such as
+[dbc](https://columnar.tech/dbc):
+
 ```sh
-go get github.com/adbc-drivers/cassandra/go
+dbc install --pre cassandra
 ```
 
-## Documentation
+Only prerelease versions of the driver are currently available, so `--pre` is
+required.
 
-Driver configuration, supported features, and type mappings are documented in
-[go/docs/cassandra.md](go/docs/cassandra.md).
+See [Building](#building) if you would rather build the driver yourself.
+
+## Usage
+
+The driver accepts the following URI forms via the `uri` database option:
+
+- `cassandra://host:9042/keyspace`
+- `cassandra://user:password@host:9042/keyspace`
+- `cassandra://host:9042/keyspace?page_size=1000&consistency=ONE`
+
+TLS is configured with the `enable_tls`, `tls_ca_path`, `tls_cert_path`,
+`tls_key_path`, `tls_skip_verify`, and `tls_hostname_override` query
+parameters. See [go/docs/cassandra.md](go/docs/cassandra.md) for all connection
+options, supported features, and type mappings.
 
 ## Building
 
-The Go module, Pixi environment, validation suite, and Docker Compose setup are
-under [`go/`](go/). See [CONTRIBUTING.md](CONTRIBUTING.md) for build and test
-instructions.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for issue reporting, development setup,
-and pull request guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
