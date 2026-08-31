@@ -485,6 +485,17 @@ func cassandraTypeToArrow(cassandraType string) arrow.DataType {
 			return arrow.BinaryTypes.String
 		}
 		return arrow.ListOf(cassandraTypeToArrow(elem))
+	case strings.HasPrefix(cassandraType, "vector<"):
+		inner := collectionInner(cassandraType)
+		elem, dimensionsText, ok := splitMapTypes(inner)
+		if !ok {
+			return arrow.BinaryTypes.String
+		}
+		dimensions, err := strconv.ParseInt(dimensionsText, 10, 32)
+		if err != nil || dimensions <= 0 {
+			return arrow.BinaryTypes.String
+		}
+		return arrow.FixedSizeListOf(int32(dimensions), cassandraTypeToArrow(elem))
 	case strings.HasPrefix(cassandraType, "map<"):
 		inner := collectionInner(cassandraType)
 		key, value, ok := splitMapTypes(inner)

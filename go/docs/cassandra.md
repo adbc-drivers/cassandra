@@ -89,6 +89,18 @@ specified separately from the URI take precedence over URI values.
 
 {{ types|safe }}
 
+#### Python floating-point collections
+
+The Python driver manager infers a standard Python list of floating-point
+values as an Arrow `list<double>`. The Cassandra driver converts this input to
+`float32` when binding a CQL `vector<float, N>`, but it does not currently
+perform the same conversion for CQL `list<float>` or `set<float>` columns.
+
+To bind a Python value to `list<float>` or `set<float>`, provide Arrow data
+whose list elements are explicitly typed as `float32`, for example with
+`pyarrow.list_(pyarrow.float32())`. Otherwise, gocql rejects the inferred
+`float64` elements.
+
 ## Options
 
 ### Connection Options

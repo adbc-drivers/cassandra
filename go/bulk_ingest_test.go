@@ -16,6 +16,7 @@ package cassandra
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -146,5 +147,26 @@ func TestBulkIngestExtractPrimaryKeySpecRejectsClusteringWithoutPartition(t *tes
 
 func TestIngestRowSize(t *testing.T) {
 	values := []any{"abc", []byte{1, 2}, int64(42), nil}
-	assert.Equal(t, 22, ingestRowSize(values))
+	assert.Equal(t, 14, ingestRowSize(values))
+}
+
+func TestIngestRowSizeVector(t *testing.T) {
+	embedding := make([]any, 1536)
+	for i := range embedding {
+		embedding[i] = float32(i)
+	}
+
+	size := ingestRowSize([]any{
+		int32(1),
+		listBindValue{values: embedding},
+	})
+	assert.GreaterOrEqual(t, size, 4+1536*4)
+	assert.Less(t, size, maxIngestBatchBytes)
+}
+
+func TestIngestRowSizeMap(t *testing.T) {
+	value := map[any]any{
+		"key": strings.Repeat("x", 1024),
+	}
+	assert.Greater(t, ingestRowSize([]any{value}), 1024)
 }

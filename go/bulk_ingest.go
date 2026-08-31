@@ -299,6 +299,9 @@ func (s *statementImpl) arrowTypeToCassandraType(dt arrow.DataType) string {
 		// used without per-element update semantics.
 		lt := dt.(*arrow.ListType)
 		return fmt.Sprintf("LIST<%s>", s.frozenIfNested(lt.Elem()))
+	case arrow.FIXED_SIZE_LIST:
+		lt := dt.(*arrow.FixedSizeListType)
+		return fmt.Sprintf("VECTOR<%s, %d>", s.arrowTypeToCassandraType(lt.Elem()), lt.Len())
 	case arrow.MAP:
 		mt := dt.(*arrow.MapType)
 		return fmt.Sprintf("MAP<%s, %s>", s.frozenIfNested(mt.KeyType()), s.frozenIfNested(mt.ItemType()))
@@ -374,6 +377,10 @@ func (s *statementImpl) ExecuteIngest(ctx context.Context, reader array.RecordRe
 
 		numRows := record.NumRows()
 		schema := record.Schema()
+		binders, err := makeParamBinders(schema)
+		if err != nil {
+			return -1, err
+		}
 		columnNames := make([]string, schema.NumFields())
 		for i := range schema.NumFields() {
 			columnNames[i] = schema.Field(i).Name
@@ -413,16 +420,8 @@ func (s *statementImpl) ExecuteIngest(ctx context.Context, reader array.RecordRe
 			}
 
 			values := make([]any, schema.NumFields())
-			for colIdx := range schema.NumFields() {
-				col := record.Column(colIdx)
-				value, err := getValueFromColumn(col, rowIdx)
-				if err != nil {
-					return -1, adbc.Error{
-						Code: adbc.StatusInvalidData,
-						Msg:  fmt.Sprintf("[cassandra] failed to extract value: %v", err),
-					}
-				}
-				values[colIdx] = value
+			if err := fillBindParams(binders, record, rowIdx, values); err != nil {
+				return -1, err
 			}
 			rowBytes := ingestRowSize(values)
 			if rowBytes >= maxIngestBatchBytes {
@@ -496,18 +495,54 @@ func ingestBatchEntryLimit(numFields int) int {
 func ingestRowSize(values []any) int {
 	size := 0
 	for _, value := range values {
-		switch value := value.(type) {
-		case nil:
-			size++
-		case string:
-			size += len(value)
-		case []byte:
-			size += len(value)
-		default:
-			size += 16
-		}
+		size += ingestValueSize(value)
 	}
 	return size
+}
+
+func ingestValueSize(value any) int {
+	// listBindValue wraps the []any produced for CQL lists, sets, and vectors.
+	if list, ok := value.(listBindValue); ok {
+		value = list.values
+	}
+
+	switch value := value.(type) {
+	case nil:
+		return 1
+	case bool, int8, uint8:
+		return 1
+	case int16, uint16:
+		return 2
+	case int32, uint32, float32:
+		return 4
+	case int64, uint64, float64:
+		return 8
+	case string:
+		return len(value)
+	case []byte:
+		return len(value)
+	case []any:
+		size := 4 // element count for CQL lists and sets
+		for _, element := range value {
+			// Lists and sets encode an element-length prefix. Vectors of
+			// fixed-width values do not, but listBindValue defers knowing the CQL
+			// target type, so including it keeps this batching estimate conservative.
+			size += 4 + ingestValueSize(element)
+		}
+		return size
+	case map[any]any:
+		size := 4 // element count
+		for key, item := range value {
+			// CQL maps encode a length before every key and value. This is a
+			// conservative overestimate for nested types with smaller framing.
+			size += 4 + ingestValueSize(key)
+			size += 4 + ingestValueSize(item)
+		}
+		return size
+	default:
+		// Retain a conservative fallback for less common scalar values.
+		return 16
+	}
 }
 
 func joinQuoted(strs []string, sep string) string {

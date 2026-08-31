@@ -335,6 +335,27 @@ func appendValue(builder array.Builder, value any, dataType arrow.DataType) erro
 				return fmt.Errorf("list element %d: %w", i, err)
 			}
 		}
+	case *array.FixedSizeListBuilder:
+		// Cassandra vector<T, N> scanned as a fixed-size Go slice.
+		rv := reflect.ValueOf(value)
+		if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
+			return fmt.Errorf("expected slice for fixed-size list, got %T", value)
+		}
+		listType, ok := dataType.(*arrow.FixedSizeListType)
+		if !ok {
+			return fmt.Errorf("expected fixed-size list data type, got %T", dataType)
+		}
+		if rv.Len() != int(listType.Len()) {
+			return fmt.Errorf("expected fixed-size list of length %d, got %d", listType.Len(), rv.Len())
+		}
+		b.Append(true)
+		elemType := listType.Elem()
+		valueBuilder := b.ValueBuilder()
+		for i := range rv.Len() {
+			if err := appendValue(valueBuilder, rv.Index(i).Interface(), elemType); err != nil {
+				return fmt.Errorf("fixed-size list element %d: %w", i, err)
+			}
+		}
 	case *array.MapBuilder:
 		// Cassandra map<K,V> scanned as a Go map (e.g. map[string]string).
 		rv := reflect.ValueOf(value)
@@ -368,6 +389,20 @@ func appendValue(builder array.Builder, value any, dataType arrow.DataType) erro
 
 type nullableValueGetter func() (value any, isNull bool, err error)
 
+// asVectorType identifies gocql's vector TypeInfo. VectorType reports itself
+// as TypeCustom, so the collection type switches below cannot identify it by
+// TypeInfo.Type() alone.
+func asVectorType(info gocql.TypeInfo) (gocql.VectorType, bool) {
+	switch info := info.(type) {
+	case gocql.VectorType:
+		return info, true
+	case *gocql.VectorType:
+		return *info, true
+	default:
+		return gocql.VectorType{}, false
+	}
+}
+
 func makeNullableScanTargets(columns []gocql.ColumnInfo) ([]any, []nullableValueGetter, error) {
 	destinations := make([]any, len(columns))
 	getters := make([]nullableValueGetter, len(columns))
@@ -386,6 +421,18 @@ func makeNullableScanTargets(columns []gocql.ColumnInfo) ([]any, []nullableValue
 }
 
 func makeNullableScanTarget(typeInfo gocql.TypeInfo) (any, nullableValueGetter, error) {
+	if _, ok := asVectorType(typeInfo); ok {
+		zero := typeInfo.Zero()
+		ptr := reflect.New(reflect.TypeOf(zero))
+		return ptr.Interface(), func() (any, bool, error) {
+			elem := ptr.Elem()
+			if elem.IsNil() {
+				return nil, true, nil
+			}
+			return elem.Interface(), false, nil
+		}, nil
+	}
+
 	switch typeInfo.Type() {
 	case gocql.TypeAscii, gocql.TypeVarchar, gocql.TypeText, gocql.TypeInet, gocql.TypeUUID, gocql.TypeTimeUUID:
 		var value *string
@@ -522,6 +569,10 @@ func makeNullableScanTarget(typeInfo gocql.TypeInfo) (any, nullableValueGetter, 
 }
 
 func gocqlTypeToArrow(typeInfo gocql.TypeInfo) arrow.DataType {
+	if vectorType, ok := asVectorType(typeInfo); ok {
+		return arrow.FixedSizeListOf(int32(vectorType.Dimensions), gocqlTypeToArrow(vectorType.SubType))
+	}
+
 	switch typeInfo.Type() {
 	case gocql.TypeAscii, gocql.TypeVarchar, gocql.TypeText:
 		return arrow.BinaryTypes.String

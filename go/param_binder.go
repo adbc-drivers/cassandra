@@ -28,6 +28,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
+	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"gopkg.in/inf.v0"
 )
 
@@ -122,9 +123,9 @@ func makeParamBinder(field arrow.Field, colIdx int) (paramBinder, error) {
 			return nil, err
 		}
 		return &dictionaryBinder{colIdx: colIdx}, nil
-	case arrow.LIST, arrow.MAP:
+	case arrow.LIST, arrow.FIXED_SIZE_LIST, arrow.MAP:
 		// Cassandra list<T>/set<T> bind from an Arrow list column, and map<K,V>
-		// from an Arrow map column.
+		// from an Arrow map column. A fixed-size list represents a CQL vector.
 		return &collectionBinder{colIdx: colIdx}, nil
 	default:
 		return nil, adbc.Error{
@@ -412,8 +413,84 @@ func (b *decimal128Binder) Bind(record arrow.RecordBatch, rowIdx int) (any, erro
 	return inf.NewDecBig(col.(*array.Decimal128).Value(rowIdx).BigInt(), inf.Scale(b.scale)), nil
 }
 
-// collectionBinder binds Arrow list and map columns. gocql marshals the Go
-// slice/map that getValueFromColumn produces into a Cassandra list/set/map.
+// listBindValue defers list serialization until gocql provides the target CQL
+// type. This is necessary for Python parameters: a Python list of floats is an
+// Arrow list<double>, while Cassandra VECTOR<FLOAT, N> requires float32 values.
+// Ordinary CQL list/set parameters continue through gocql's regular marshaler.
+type listBindValue struct {
+	values []any
+}
+
+func (value listBindValue) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+	vectorType, ok := asVectorType(info)
+	if !ok {
+		return gocql.Marshal(info, value.values)
+	}
+
+	switch vectorType.SubType.Type() {
+	case gocql.TypeFloat:
+		values, err := vectorNumbers[float32](value.values)
+		if err != nil {
+			return nil, err
+		}
+		return vectorType.Marshal(values)
+	case gocql.TypeDouble:
+		values, err := vectorNumbers[float64](value.values)
+		if err != nil {
+			return nil, err
+		}
+		return vectorType.Marshal(values)
+	default:
+		return vectorType.Marshal(value.values)
+	}
+}
+
+// vectorNumbers converts the Arrow list elements of a vector parameter to the
+// numeric type its CQL subtype requires. Python parameters arrive as float64,
+// while vectors built from Arrow integer columns arrive as sized ints.
+func vectorNumbers[T float32 | float64](elements []any) ([]T, error) {
+	values := make([]T, len(elements))
+	for i, element := range elements {
+		converted, err := vectorNumber[T](element)
+		if err != nil {
+			return nil, fmt.Errorf("vector element %d: %w", i, err)
+		}
+		values[i] = converted
+	}
+	return values, nil
+}
+
+func vectorNumber[T float32 | float64](value any) (T, error) {
+	switch value := value.(type) {
+	case float32:
+		return T(value), nil
+	case float64:
+		return T(value), nil
+	case int8:
+		return T(value), nil
+	case int16:
+		return T(value), nil
+	case int32:
+		return T(value), nil
+	case int64:
+		return T(value), nil
+	case uint8:
+		return T(value), nil
+	case uint16:
+		return T(value), nil
+	case uint32:
+		return T(value), nil
+	case uint64:
+		return T(value), nil
+	default:
+		var zero T
+		return zero, fmt.Errorf("cannot convert %T to %T", value, zero)
+	}
+}
+
+// collectionBinder binds Arrow list, fixed-size list, and map columns. gocql
+// marshals the Go slice/map that getValueFromColumn produces into a Cassandra
+// list, set, map, or vector.
 type collectionBinder struct{ colIdx int }
 
 func (b *collectionBinder) Bind(record arrow.RecordBatch, rowIdx int) (any, error) {
@@ -421,5 +498,15 @@ func (b *collectionBinder) Bind(record arrow.RecordBatch, rowIdx int) (any, erro
 	if col.IsNull(rowIdx) {
 		return nil, nil
 	}
-	return getValueFromColumn(col, rowIdx)
+	value, err := getValueFromColumn(col, rowIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	switch col.DataType().ID() {
+	case arrow.LIST, arrow.FIXED_SIZE_LIST:
+		return listBindValue{values: value.([]any)}, nil
+	default:
+		return value, nil
+	}
 }
