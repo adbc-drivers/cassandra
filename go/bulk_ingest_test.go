@@ -158,7 +158,7 @@ func TestIngestRowSizeVector(t *testing.T) {
 
 	size := ingestRowSize([]any{
 		int32(1),
-		listBindValue{values: embedding},
+		embedding,
 	})
 	assert.GreaterOrEqual(t, size, 4+1536*4)
 	assert.Less(t, size, maxIngestBatchBytes)

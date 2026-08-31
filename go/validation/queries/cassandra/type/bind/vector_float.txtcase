@@ -35,10 +35,6 @@ INSERT INTO test_vector_float (pk, idx, res) VALUES (0, $1, $2)
 
 // part: bind_schema
 
-// adbc_driver_manager.dbapi converts a Python list of floats to an Arrow
-// list<double>. The driver must coerce those values to the target CQL FLOAT
-// element type and enforce the vector dimension.
-
 {
     "format": "+s",
     "children": [
@@ -54,7 +50,7 @@ INSERT INTO test_vector_float (pk, idx, res) VALUES (0, $1, $2)
             "children": [
                 {
                     "name": "item",
-                    "format": "g",
+                    "format": "f",
                     "flags": ["nullable"]
                 }
             ]

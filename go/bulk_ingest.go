@@ -501,11 +501,6 @@ func ingestRowSize(values []any) int {
 }
 
 func ingestValueSize(value any) int {
-	// listBindValue wraps the []any produced for CQL lists, sets, and vectors.
-	if list, ok := value.(listBindValue); ok {
-		value = list.values
-	}
-
 	switch value := value.(type) {
 	case nil:
 		return 1
@@ -522,11 +517,11 @@ func ingestValueSize(value any) int {
 	case []byte:
 		return len(value)
 	case []any:
+		// getValueFromColumn produces []any for CQL lists, sets, and vectors.
 		size := 4 // element count for CQL lists and sets
 		for _, element := range value {
 			// Lists and sets encode an element-length prefix. Vectors of
-			// fixed-width values do not, but listBindValue defers knowing the CQL
-			// target type, so including it keeps this batching estimate conservative.
+			// fixed-width values do not, so this is a conservative overestimate.
 			size += 4 + ingestValueSize(element)
 		}
 		return size
