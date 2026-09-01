@@ -19,6 +19,7 @@ drop = "test_vector_float"
 
 [tags]
 sql-type-name = "VECTOR"
+caveats = ["The driver can only bind CQL collections or vectors of float from Arrow float32 elements. Libraries such as PyArrow infer Python floating-point values as Arrow float64 by default; those inferred values cannot be bound directly."]
 
 // part: setup_query
 
