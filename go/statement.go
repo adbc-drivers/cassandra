@@ -478,6 +478,18 @@ func getValueFromColumn(col arrow.Array, row int) (any, error) {
 			items = append(items, item)
 		}
 		return items, nil
+	case *array.FixedSizeList:
+		values := arr.ListValues()
+		start, end := arr.ValueOffsets(row)
+		items := make([]any, 0, end-start)
+		for i := start; i < end; i++ {
+			item, err := getValueFromColumn(values, int(i))
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, item)
+		}
+		return items, nil
 	case *array.Map:
 		// gocql marshals a Go map into a Cassandra map<K,V>.
 		keys := arr.Keys()

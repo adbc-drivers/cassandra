@@ -122,9 +122,9 @@ func makeParamBinder(field arrow.Field, colIdx int) (paramBinder, error) {
 			return nil, err
 		}
 		return &dictionaryBinder{colIdx: colIdx}, nil
-	case arrow.LIST, arrow.MAP:
+	case arrow.LIST, arrow.FIXED_SIZE_LIST, arrow.MAP:
 		// Cassandra list<T>/set<T> bind from an Arrow list column, and map<K,V>
-		// from an Arrow map column.
+		// from an Arrow map column. A fixed-size list represents a CQL vector.
 		return &collectionBinder{colIdx: colIdx}, nil
 	default:
 		return nil, adbc.Error{
@@ -412,8 +412,9 @@ func (b *decimal128Binder) Bind(record arrow.RecordBatch, rowIdx int) (any, erro
 	return inf.NewDecBig(col.(*array.Decimal128).Value(rowIdx).BigInt(), inf.Scale(b.scale)), nil
 }
 
-// collectionBinder binds Arrow list and map columns. gocql marshals the Go
-// slice/map that getValueFromColumn produces into a Cassandra list/set/map.
+// collectionBinder binds Arrow list, fixed-size list, and map columns. gocql
+// marshals the Go slice/map that getValueFromColumn produces into a Cassandra
+// list, set, map, or vector.
 type collectionBinder struct{ colIdx int }
 
 func (b *collectionBinder) Bind(record arrow.RecordBatch, rowIdx int) (any, error) {
