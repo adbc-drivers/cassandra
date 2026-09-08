@@ -62,9 +62,30 @@ services:
     networks:
       - cassandra-network
 
+  scylla:
+    image: scylladb/scylla:2026.3
+    container_name: scylla-test
+    hostname: scylla
+    ports:
+      - "9044:9042"  # CQL native transport
+    command: ["--smp", "1", "--memory", "750M", "--overprovisioned", "1"]
+    volumes:
+      - scylla-data:/var/lib/scylla
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    networks:
+      - cassandra-network
+
 volumes:
   cassandra-data:
   dse-data:
+  scylla-data:
 
 networks:
   cassandra-network:

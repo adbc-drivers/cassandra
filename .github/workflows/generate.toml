@@ -24,3 +24,7 @@ vendor_version = "cassandra"
 [[lang.go.validation.configs]]
 service_name = "dse"
 vendor_version = "dse"
+
+[[lang.go.validation.configs]]
+service_name = "scylla"
+vendor_version = "scylladb"

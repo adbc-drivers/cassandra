@@ -161,6 +161,7 @@ jobs:
           # I think we only need to test one platform, but we can change that later
           - { platform: linux, arch: amd64, runner: ubuntu-latest, service_name: "test-service", vendor_version: "cassandra", environment: null, aws: false, azure: false, gcloud: false }
           - { platform: linux, arch: amd64, runner: ubuntu-latest, service_name: "dse", vendor_version: "dse", environment: null, aws: false, azure: false, gcloud: false }
+          - { platform: linux, arch: amd64, runner: ubuntu-latest, service_name: "scylla", vendor_version: "scylladb", environment: null, aws: false, azure: false, gcloud: false }
     environment: ${{ matrix.environment }}
     permissions:
       contents: read

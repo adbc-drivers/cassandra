@@ -18,13 +18,14 @@
 
 Run these commands from the `go` directory.
 
-1. Start Cassandra and DataStax Enterprise, then initialize their test
-   keyspaces:
+1. Start Cassandra, DataStax Enterprise, and ScyllaDB, then initialize their
+   test keyspaces:
 
    ```shell
-   docker compose up --detach --wait test-service dse
+   docker compose up --detach --wait test-service dse scylla
    docker compose exec -T test-service cqlsh -f /docker-entrypoint-initdb.d/init.cql
    docker compose exec -T dse cqlsh -f /docker-entrypoint-initdb.d/init.cql
+   docker compose exec -T scylla cqlsh -f /docker-entrypoint-initdb.d/init.cql
    ```
 
    Starting the DSE service accepts the DataStax license through the
@@ -42,6 +43,7 @@ Run these commands from the `go` directory.
    pixi run make
    pixi run validate --vendor-version cassandra
    pixi run validate --vendor-version dse
+   pixi run validate --vendor-version scylladb
    ```
 
 Run an individual validation module with:
