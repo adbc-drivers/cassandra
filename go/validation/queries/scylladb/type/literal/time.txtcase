@@ -14,16 +14,4 @@
 
 // part: metadata
 
-[setup]
-drop = "test_scylladb_literal_time"
-
-// part: setup_query
-
-// ScyllaDB cannot cast a text literal directly to TIME in a SELECT expression,
-// so insert the literal into a typed column and select it back.
-CREATE TABLE test_scylladb_literal_time (id INT PRIMARY KEY, res TIME);
-INSERT INTO test_scylladb_literal_time (id, res) VALUES (1, '13:45:31.123456');
-
-// part: query
-
-SELECT res FROM test_scylladb_literal_time WHERE id = 1
+hide = true

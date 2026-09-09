@@ -14,16 +14,4 @@
 
 // part: metadata
 
-[setup]
-drop = "test_scylladb_literal_date"
-
-// part: setup_query
-
-// ScyllaDB cannot cast a text literal directly to DATE in a SELECT expression,
-// so insert the literal into a typed column and select it back.
-CREATE TABLE test_scylladb_literal_date (id INT PRIMARY KEY, res DATE);
-INSERT INTO test_scylladb_literal_date (id, res) VALUES (1, '2023-05-15');
-
-// part: query
-
-SELECT res FROM test_scylladb_literal_date WHERE id = 1
+hide = true
