@@ -134,6 +134,38 @@ class DSEQuirks(CassandraQuirks):
         return super().queries_paths + (Path(__file__).parent.parent / "queries/dse",)
 
 
+class ScyllaDBQuirks(CassandraQuirks):
+    name = "scylladb"
+    # ScyllaDB 2026.3 reports its Cassandra-compatible release version through
+    # system.local rather than returning the ScyllaDB image tag.
+    vendor_version = "3.0.8"
+    short_version = "2026.3"
+    features = CassandraQuirks.features.with_values(
+        current_schema=model.FromEnv("SCYLLADB_KEYSPACE"),
+        secondary_schema=model.FromEnv("SCYLLADB_SECONDARY_KEYSPACE"),
+    )
+    setup = model.DriverSetup(
+        database={
+            "uri": model.FromEnv("SCYLLADB_URI"),
+        },
+        connection={},
+        statement={},
+    )
+
+    @property
+    def queries_paths(self) -> tuple[Path]:
+        return super().queries_paths + (
+            Path(__file__).parent.parent / "queries/scylladb",
+        )
+
+    def query_override(self, context: str, default: str) -> str:
+        if context == "TestStatement.test_execute_schema_noalias":
+            # ScyllaDB does not support arithmetic on a selected column, but a
+            # cast preserves the test's unaliased-expression coverage.
+            return default.replace("id + 1", "cast(id AS bigint)")
+        return super().query_override(context, default)
+
+
 @functools.cache
 def get_quirks(test_config: str) -> CassandraQuirks:
     """Get quirks for a validation target."""
@@ -141,4 +173,6 @@ def get_quirks(test_config: str) -> CassandraQuirks:
         return CassandraQuirks()
     if test_config == "dse":
         return DSEQuirks()
+    if test_config == "scylladb":
+        return ScyllaDBQuirks()
     raise ValueError(f"unsupported test config: {test_config}")

@@ -15,15 +15,15 @@
 -- Create primary test keyspace
 CREATE KEYSPACE IF NOT EXISTS adbc_test
 WITH replication = {
-    'class': 'SimpleStrategy',
-    'replication_factor': 1
+    'class': 'NetworkTopologyStrategy',
+    'datacenter1': 1
 };
 
 -- Create secondary test keyspace
 CREATE KEYSPACE IF NOT EXISTS adbc_test2
 WITH replication = {
-    'class': 'SimpleStrategy',
-    'replication_factor': 1
+    'class': 'NetworkTopologyStrategy',
+    'datacenter1': 1
 };
 
 -- Switch to test keyspace

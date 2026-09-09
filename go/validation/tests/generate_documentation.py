@@ -31,7 +31,13 @@ def get_quirks(version: str, *, vendor: str) -> model.DriverQuirks:
         # GetInfo, but the compatibility section should identify the backend.
         quirks.vendor_name = "DataStax Enterprise"
         return quirks
-    if vendor not in ("cassandra", "dse"):
+    if vendor == "scylladb" and version == "2026.3":
+        quirks = cassandra.ScyllaDBQuirks()
+        # ScyllaDB reports its Cassandra-compatible product name and release
+        # version through GetInfo, but this section describes the backend.
+        quirks.vendor_name = "ScyllaDB"
+        return quirks
+    if vendor not in ("cassandra", "dse", "scylladb"):
         raise ValueError(f"unsupported vendor: {vendor}")
     raise ValueError(f"unsupported {vendor} version: {version}")
 
@@ -50,6 +56,7 @@ if __name__ == "__main__":
         [
             ("cassandra", "Apache Cassandra"),
             ("dse", "DataStax Enterprise"),
+            ("scylladb", "ScyllaDB"),
         ],
         reports,
         template.resolve(),

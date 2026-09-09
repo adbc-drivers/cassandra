@@ -35,7 +35,9 @@ func (CassandraErrorInspector) InspectError(err error, defaultStatus adbc.Status
 		message := strings.ToLower(requestErr.Message())
 		switch {
 		case requestErr.Code() == gocql.ErrCodeAlreadyExists,
-			requestErr.Code() == gocql.ErrCodeInvalid && strings.Contains(message, "undefined column name"):
+			requestErr.Code() == gocql.ErrCodeInvalid &&
+				(strings.Contains(message, "undefined column name") ||
+					strings.Contains(message, "unknown identifier")):
 			status = adbc.StatusAlreadyExists
 		case requestErr.Code() == gocql.ErrCodeInvalid && isTableNotFoundMessage(message):
 			status = adbc.StatusNotFound
