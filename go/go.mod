@@ -20,7 +20,7 @@ require (
 	github.com/adbc-drivers/driverbase-go/driverbase v0.0.0-20260903064016-31a68ee93796
 	github.com/adbc-drivers/driverbase-go/validation v0.0.0-20260803160758-8f4d5c91c894
 	github.com/apache/arrow-adbc/go/adbc v1.12.0
-	github.com/apache/arrow-go/v18 v18.7.0
+	github.com/apache/arrow-go/v18 v18.8.0
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.12.1
