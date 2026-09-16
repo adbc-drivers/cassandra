@@ -355,7 +355,7 @@ func (q *CassandraQuirks) GetMetadata(code adbc.InfoCode) any {
 	case adbc.InfoDriverVersion:
 		return "(unknown or development build)"
 	case adbc.InfoDriverArrowVersion:
-		return "v18.7.0"
+		return "v18.8.0"
 	case adbc.InfoVendorVersion:
 		return regexp.MustCompile(`5\.0\.[0-9]+`)
 	case adbc.InfoVendorArrowVersion:
