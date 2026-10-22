@@ -15,12 +15,54 @@
 import adbc_driver_manager.dbapi
 import adbc_drivers_validation.tests.ingest
 import pyarrow
-from adbc_drivers_validation import model
+from adbc_drivers_validation import compare, model, utils
+from adbc_drivers_validation.tests.ingest import make_table_name
+from adbc_drivers_validation.utils import execute_query_without_prepare
 
 from . import cassandra
 
 
 class TestIngest(adbc_drivers_validation.tests.ingest.TestIngest):
+    def test_create_dictionary(
+        self,
+        driver: model.DriverQuirks,
+        conn: adbc_driver_manager.dbapi.Connection,
+        query: model.Query,
+    ) -> None:
+        subquery = query.query
+        assert isinstance(subquery, model.IngestQuery)
+
+        table_name = make_table_name("test_ingest_create_dictionary", query)
+        plain = subquery.input()
+        data = pyarrow.concat_tables([plain, plain]).combine_chunks()
+        values = data.column(1).dictionary_encode()
+        data = data.set_column(1, data.schema.field(1).with_type(values.type), values)
+
+        with conn.cursor() as cursor:
+            driver.try_drop_table(cursor, table_name=table_name)
+            with driver.setup_statement(query, cursor):
+                modified = cursor.adbc_ingest(table_name, data, mode="create")
+                if driver.features.statement_rows_affected:
+                    assert modified == len(data)
+                else:
+                    assert modified == -1
+
+        fields = [driver.quote_identifier(field.name) for field in data.schema]
+        select = (
+            f"SELECT {', '.join(fields)} FROM {driver.quote_identifier(table_name)}"
+        )
+        with conn.cursor() as cursor, driver.setup_statement(query, cursor):
+            result = execute_query_without_prepare(cursor, select)
+
+        # Cassandra, DSE, and ScyllaDB upsert duplicate primary keys, so repeating
+        # the fixture exercises repeated dictionary indices without adding rows.
+        expected = subquery.expected()
+        expected = expected.sort_by(expected.schema.names[0])
+        result = result.sort_by(result.schema.names[0])
+        compare.compare_tables(expected, result, query.metadata())
+        subschema = pyarrow.schema(list(result.schema)[1:])
+        utils.assert_field_type_name(driver, "query", query, subschema)
+
     def test_many_columns(
         self,
         driver: model.DriverQuirks,
