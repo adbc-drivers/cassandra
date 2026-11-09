@@ -311,11 +311,11 @@ func (d *databaseImpl) parseURI(ctx context.Context, uri string) error {
 		}
 	}
 
-	parsed, err := url.Parse(uri)
+	parsed, err := driverbase.SafeParseURL(uri)
 	if err != nil {
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  "[cassandra] invalid URI",
+			Msg:  fmt.Sprintf("[cassandra] invalid URI: %v", err),
 		}
 	}
 
