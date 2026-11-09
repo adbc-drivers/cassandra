@@ -311,48 +311,34 @@ func (d *databaseImpl) parseURI(ctx context.Context, uri string) error {
 		}
 	}
 
-	// Remove scheme
-	uri = strings.TrimPrefix(uri, "cassandra://")
-
-	// Split on ? to separate connection string from query parameters
-	parts := strings.SplitN(uri, "?", 2)
-	connStr := parts[0]
-
-	// Parse authentication if present
-	if idx := strings.Index(connStr, "@"); idx != -1 {
-		auth := connStr[:idx]
-		connStr = connStr[idx+1:]
-		authParts := strings.SplitN(auth, ":", 2)
-		d.username = authParts[0]
-		if len(authParts) > 1 {
-			d.password = authParts[1]
+	parsed, err := url.Parse(uri)
+	if err != nil {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "[cassandra] invalid URI",
 		}
 	}
 
-	// Parse host, port, and keyspace
-	hostAndKeyspace := strings.SplitN(connStr, "/", 2)
-	hostAndPort := hostAndKeyspace[0]
-
-	if hostAndPort != "" {
-		if strings.Contains(hostAndPort, ":") {
-			hostPortParts := strings.Split(hostAndPort, ":")
-			d.hosts = []string{hostPortParts[0]}
-			d.port = hostPortParts[1]
-		} else {
-			d.hosts = []string{hostAndPort}
+	if parsed.User != nil {
+		d.username = parsed.User.Username()
+		if password, ok := parsed.User.Password(); ok {
+			d.password = password
 		}
 	}
-
-	if len(hostAndKeyspace) > 1 {
-		d.keyspace = hostAndKeyspace[1]
+	if host := parsed.Hostname(); host != "" {
+		d.hosts = []string{host}
+	}
+	if port := parsed.Port(); port != "" {
+		d.port = port
+	}
+	if parsed.Path != "" {
+		d.keyspace = strings.TrimPrefix(parsed.Path, "/")
 	}
 
 	// Parse query parameters after the authority and path so they can override
 	// defaults while explicit ADBC options can still override the URI.
-	if len(parts) > 1 {
-		if err := d.parseURIQuery(ctx, parts[1]); err != nil {
-			return err
-		}
+	if err := d.parseURIQuery(ctx, parsed.RawQuery); err != nil {
+		return err
 	}
 
 	return nil
