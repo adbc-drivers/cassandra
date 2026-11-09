@@ -815,6 +815,7 @@ func TestCassandraDialTargets(t *testing.T) {
 // TestURIParsing tests the URI parsing functionality
 func TestURIParsing(t *testing.T) {
 	tests := []struct {
+		expected    map[string]string
 		name        string
 		uri         string
 		username    string
@@ -832,6 +833,17 @@ func TestURIParsing(t *testing.T) {
 		{
 			name: "uri without port",
 			uri:  "cassandra://localhost/testkeyspace",
+		},
+		{
+			name: "escaped credentials and IPv6",
+			uri:  "cassandra://user%40name:pass%3Aword@[::1]:9142/testkeyspace",
+			expected: map[string]string{
+				cassandra.OptionStringAuthUsername: "user@name",
+				cassandra.OptionStringAuthPassword: "pass:word",
+				cassandra.OptionStringHosts:        "::1",
+				cassandra.OptionStringPort:         "9142",
+				cassandra.OptionStringKeyspace:     "testkeyspace",
+			},
 		},
 		{
 			name:        "invalid scheme",
@@ -863,7 +875,14 @@ func TestURIParsing(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.NotNil(t, db)
+			require.NotNil(t, db)
+			options, ok := db.(adbc.GetSetOptionsWithContext)
+			require.True(t, ok)
+			for option, want := range tt.expected {
+				got, err := options.GetOption(context.Background(), option)
+				require.NoError(t, err)
+				assert.Equal(t, want, got, option)
+			}
 			require.NoError(t, db.Close(context.Background()))
 		})
 	}
@@ -976,4 +995,31 @@ func TestURIExplicitOptionsOverride(t *testing.T) {
 	pageSize, err := options.GetOption(ctx, cassandra.OptionIntPageSize)
 	require.NoError(t, err)
 	assert.Equal(t, "1000", pageSize)
+}
+
+func TestInvalidURIDoesNotExposeSecrets(t *testing.T) {
+	const password = "uri-password-sentinel"
+	const token = "uri-token-sentinel"
+	for _, tc := range []struct{ name, uri, diagnostic string }{
+		{"invalid port", "cassandra://user:" + password + "@localhost:invalid/test?token=" + token, "invalid port"},
+		{"missing userinfo separator and host", "cassandra://user:" + password + "/test?token=" + token, "invalid port"},
+		{"invalid escape", "cassandra://user:" + password + "@localhost/test%zz?token=" + token, "invalid URL escape"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			driver := cassandra.NewDriver(memory.NewGoAllocator())
+			db, err := driver.NewDatabaseWithContext(context.Background(), map[string]string{adbc.OptionKeyURI: tc.uri})
+			if db != nil {
+				defer func() { require.NoError(t, db.Close(context.Background())) }()
+			}
+			require.Error(t, err)
+			assert.NotContains(t, err.Error(), password)
+			assert.NotContains(t, err.Error(), token)
+			assert.NotContains(t, err.Error(), tc.uri)
+			assert.Contains(t, err.Error(), "invalid URI")
+			assert.Contains(t, err.Error(), tc.diagnostic)
+			var adbcErr adbc.Error
+			require.ErrorAs(t, err, &adbcErr)
+			assert.Equal(t, adbc.StatusInvalidArgument, adbcErr.Code)
+		})
+	}
 }
