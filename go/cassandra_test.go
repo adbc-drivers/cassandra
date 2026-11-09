@@ -977,3 +977,23 @@ func TestURIExplicitOptionsOverride(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "1000", pageSize)
 }
+
+func TestInvalidURIDoesNotExposeSecrets(t *testing.T) {
+	const password = "uri-password-sentinel"
+	const token = "uri-token-sentinel"
+	uri := "mysql://user:" + password + "@localhost/test?token=" + token
+	driver := cassandra.NewDriver(memory.NewGoAllocator())
+	db, err := driver.NewDatabaseWithContext(context.Background(), map[string]string{adbc.OptionKeyURI: uri})
+	if db != nil {
+		defer func() { require.NoError(t, db.Close(context.Background())) }()
+	}
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), password)
+	assert.NotContains(t, err.Error(), token)
+	assert.NotContains(t, err.Error(), uri)
+	assert.Contains(t, err.Error(), "invalid URI scheme")
+	assert.Contains(t, err.Error(), "expected 'cassandra://'")
+	var adbcErr adbc.Error
+	require.ErrorAs(t, err, &adbcErr)
+	assert.Equal(t, adbc.StatusInvalidArgument, adbcErr.Code)
+}

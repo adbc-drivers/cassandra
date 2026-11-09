@@ -307,7 +307,7 @@ func (d *databaseImpl) parseURI(ctx context.Context, uri string) error {
 	if !strings.HasPrefix(uri, "cassandra://") {
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("[cassandra] invalid URI scheme, expected 'cassandra://', got: %s", uri),
+			Msg:  "[cassandra] invalid URI scheme, expected 'cassandra://'",
 		}
 	}
 
