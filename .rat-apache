@@ -23,4 +23,3 @@ go/pkg/utils.c
 go/pkg/utils.h
 go/record_reader.go
 go/statement.go
-.github/workflows/dev_issues.yaml
