@@ -10,8 +10,8 @@ github.com/apache/arrow-adbc/go/adbc v1.13.0 h1:MmZz52SJqESrQ3sE2YMTHE+2eUekp9jY
 github.com/apache/arrow-adbc/go/adbc v1.13.0/go.mod h1:ILVKSqqJ+fZLK2Hy5SDftJBAluQxHv33dvLL0Ad5ZaY=
 github.com/apache/arrow-go/v18 v18.8.0 h1:BLOzbPv7bxMPgXPacAg6HQjnxupYsZzC4tf+FkqPU/M=
 github.com/apache/arrow-go/v18 v18.8.0/go.mod h1:uJCFfCwq0KsxCmsCfQg4ft+LsW+iHYzAXiSDh5ug/8U=
-github.com/apache/cassandra-gocql-driver/v2 v2.1.2 h1:lu/p0Db2av18enHJvWJQoChLssI0P+AR06STq4VdvCc=
-github.com/apache/cassandra-gocql-driver/v2 v2.1.2/go.mod h1:QH/asJjB3mHvY6Dot6ZKMMpTcOrWJ8i9GhsvG1g0PK4=
+github.com/apache/cassandra-gocql-driver/v2 v2.2.0 h1:t/tcCpYdBQuyPy0E52SNsyKRG/61Pv2V8+429gKYKzw=
+github.com/apache/cassandra-gocql-driver/v2 v2.2.0/go.mod h1:YrDMQWYKILVs27u3u0VOdOqssyx5FnIaVEisehz7KL8=
 github.com/apache/thrift v0.25.0 h1:6LLlvoPjy8Cc/0b5TYRcTR3RZa2W0at3WQRcOkDwVGs=
 github.com/apache/thrift v0.25.0/go.mod h1:4lwyToijD9T70w7GlevFk7FnpY60Wv8I8krMkF6FkAo=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=
